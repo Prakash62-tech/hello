@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Love Test ❤️</title>
+  <style>
+    :root {
+      --bg: #0f1724;
+      --card: #1a2236;
+      --accent: #ef476f;
+      --muted: #94a3b8;
+      --glass: rgba(255,255,255,0.05);
+    }
+    * { box-sizing:border-box; font-family: system-ui, sans-serif; }
+    body {
+      margin:0; background:var(--bg); color:#e6eef8;
+      display:flex; align-items:center; justify-content:center;
+      min-height:100vh; padding:16px;
+    }
+    .app { width:100%; max-width:480px; }
+    .card {
+      background:var(--card);
+      border-radius:12px; padding:20px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.6);
+      margin-bottom:16px;
+    }
+    h1,h2,h3 { margin:0 0 12px; font-weight:600; }
+    input, button {
+      width:100%; padding:12px; margin-top:8px;
+      border-radius:8px; border:none;
+      font-size:16px;
+    }
+    input {
+      background:rgba(255,255,255,0.1); color:#fff;
+    }
+    button {
+      background:var(--accent); color:#fff; font-weight:600;
+      cursor:pointer;
+    }
+    button.alt { background:#64748b; }
+    .muted { color:var(--muted); font-size:14px; margin-top:8px; }
+    .hidden { display:none; }
+    #result-card {
+      background:var(--glass);
+      padding:16px; border-radius:12px; text-align:center;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    .heart {
+      font-size:40px; display:inline-block;
+      animation: heartbeat 1s infinite;
+      margin-bottom:8px;
+    }
+    @keyframes heartbeat {
+      0%, 20%, 60%, 100% { transform: scale(1); }
+      40% { transform: scale(1.3); }
+      80% { transform: scale(1.1); }
+    }
+    @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+    .test-item {
+      background:var(--glass); padding:10px;
+      border-radius:8px; margin-bottom:8px;
+      font-size:14px;
+    }
+    .flex-between {
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .pill {
+      background:var(--accent); padding:4px 8px;
+      border-radius:999px; font-size:13px;
+    }
+    .quote {
+      font-style:italic; font-size:15px;
+      text-align:center; margin-top:12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Authentication -->
+    <div id="auth-card" class="card">
+      <h2 id="auth-title">Login</h2>
+      <form id="auth-form">
+        <input type="email" id="auth-email" placeholder="Email" required>
+        <input type="password" id="auth-pass" placeholder="Password" required>
+        <button type="submit" id="auth-btn">Login</button>
+      </form>
+      <div class="muted">
+        <span id="toggle-text">Don't have an account?</span>
+        <button id="toggle-auth" class="alt" style="margin-top:8px">Switch to Sign Up</button>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="hidden">
+      <div class="card">
+        <h2>Love Test ❤️</h2>
+        <form id="love-form">
+          <input type="text" id="name1" placeholder="Your Name" required>
+          <input type="text" id="name2" placeholder="Partner's Name" required>
+          <button type="submit">Check Love %</button>
+        </form>
+        <div id="result"></div>
+      </div>
+
+      <div class="card">
+        <h3>     💌Today's Love Quote</h3>
+        <div id="quote" class="quote"></div>
+      </div>
+
+      <div class="card">
+        <h3>📜 History</h3>
+        <div id="tests-list"></div>
+      </div>
+
+      <div style="text-align:center; margin-top:12px">
+        <button id="signout-btn" class="alt">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase config (unchanged)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCAYWX4XXcKhyFtbmF5kIF3-ETNMQSYb2o",
+      authDomain: "lovetest-264c3.firebaseapp.com",
+      databaseURL: "https://lovetest-264c3-default-rtdb.firebaseio.com",
+      projectId: "lovetest-264c3",
+      storageBucket: "lovetest-264c3.firebasestorage.app",
+      messagingSenderId: "931140874361",
+      appId: "1:931140874361:web:46ea892f50a633246964a8"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Elements
+    const authCard = document.getElementById('auth-card');
+    const authForm = document.getElementById('auth-form');
+    const authTitle = document.getElementById('auth-title');
+    const authBtn = document.getElementById('auth-btn');
+    const toggleAuth = document.getElementById('toggle-auth');
+    const toggleText = document.getElementById('toggle-text');
+    const mainApp = document.getElementById('main-app');
+    const loveForm = document.getElementById('love-form');
+    const name1El = document.getElementById('name1');
+    const name2El = document.getElementById('name2');
+    const resultEl = document.getElementById('result');
+    const testsList = document.getElementById('tests-list');
+    const quoteEl = document.getElementById('quote');
+    const signoutBtn = document.getElementById('signout-btn');
+
+    let isLogin = true;
+
+    // Toggle auth
+    toggleAuth.addEventListener('click', () => {
+      isLogin = !isLogin;
+      authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
+      authBtn.textContent = isLogin ? 'Login' : 'Sign Up';
+      toggleText.textContent = isLogin ? "Don't have an account?" : "Already have an account?";
+      toggleAuth.textContent = isLogin ? "Switch to Sign Up" : "Switch to Login";
+    });
+
+    // Auth submit
+    authForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const pass = document.getElementById('auth-pass').value;
+      try {
+        if(isLogin){
+          await auth.signInWithEmailAndPassword(email, pass);
+        } else {
+          await auth.createUserWithEmailAndPassword(email, pass);
+        }
+      } catch(err){ alert(err.message); }
+    });
+
+    signoutBtn.addEventListener('click', () => auth.signOut());
+
+    // Love percent formula
+    function lovePercent(a,b){
+      const s=(a+'::'+b).toLowerCase().trim(); let h=0;
+      for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; }
+      return h%101;
+    }
+
+    loveForm.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const name1=name1El.value.trim(), name2=name2El.value.trim();
+      if(!name1||!name2) return;
+      const percent=lovePercent(name1,name2);
+      const user=auth.currentUser;
+      const payload={name1,name2,percent,createdAt:Date.now()};
+      const ref=db.ref('users/'+user.uid+'/love_tests').push();
+      await ref.set(payload);
+      resultEl.innerHTML=`
+        <div id="result-card">
+          <div class="heart">❤️</div>
+          <div><strong>${name1}</strong> + <strong>${name2}</strong></div>
+          <div class="pill">${percent}%</div>
+        </div>`;
+      name1El.value=name2El.value='';
+    });
+
+    // Render history
+    function renderTests(data){
+      testsList.innerHTML='';
+      if(!data){ testsList.innerHTML='<div class="muted">No history</div>'; return;}
+      const arr=Object.keys(data).map(k=>({...data[k],id:k})).sort((a,b)=>b.createdAt-a.createdAt);
+      for(const item of arr){
+        const d=new Date(item.createdAt).toLocaleString();
+        const el=document.createElement('div');
+        el.className='test-item';
+        el.innerHTML=`<div class="flex-between">
+          <span>${item.name1} + ${item.name2}</span>
+          <span class="pill">${item.percent}%</span>
+        </div><div class="muted">${d}</div>`;
+        testsList.appendChild(el);
+      }
+    }
+
+    // Quotes
+    const quotes=[
+    "Love is composed of a single soul inhabiting two bodies.",
+    "Every love story is beautiful, but ours is my favorite.",
+    "You are my today and all of my tomorrows.",
+    "In your smile I see something more beautiful than stars.",
+    "To love is nothing. To be loved is something. But to love and be loved, that’s everything."
+    ];
+    function showDailyQuote(){
+      const day=new Date().getDate();
+      const idx=day%quotes.length;
+      quoteEl.textContent=quotes[idx];
+    }
+
+    // Auth listener
+    auth.onAuthStateChanged(user=>{
+      if(user){
+        authCard.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        db.ref('users/'+user.uid+'/love_tests').on('value',snap=>renderTests(snap.val()));
+        showDailyQuote();
+      } else {
+        mainApp.classList.add('hidden');
+        authCard.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
