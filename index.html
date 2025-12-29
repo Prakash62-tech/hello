@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Love Meter - Find Your Love Percentage</title>
+    <!-- Firebase v8 CDN -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #ff4d6d;
+            --secondary: #ff8fa3;
+            --accent: #ffb3c1;
+            --light: #fff0f3;
+            --dark: #590d22;
+            --gradient: linear-gradient(135deg, #ff4d6d 0%, #ff8fa3 100%);
+        }
+
+        body {
+            background: var(--light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+
+        header {
+            background: var(--gradient);
+            padding: 20px 0;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 77, 109, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "❤️";
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.1;
+            transform: rotate(-15deg);
+            left: -50px;
+            top: -50px;
+        }
+
+        header::after {
+            content: "💕";
+            position: absolute;
+            font-size: 150px;
+            opacity: 0.1;
+            transform: rotate(15deg);
+            right: -30px;
+            bottom: -50px;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-container, .love-calculator {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 2px solid var(--accent);
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 1.8rem;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark);
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.2);
+        }
+
+        .btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            display: block;
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(255, 77, 109, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--light);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .user-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .welcome {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .result-container {
+            background: linear-gradient(135deg, #fff0f3 0%, #ffffff 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            text-align: center;
+            border: 3px solid var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { border-color: #ff4d6d; }
+            50% { border-color: #ffb3c1; }
+            100% { border-color: #ff4d6d; }
+        }
+
+        .love-percentage {
+            font-size: 4rem;
+            font-weight: bold;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+        }
+
+        .shayari-box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: var(--dark);
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shayari-box p {
+            line-height: 1.6;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .detail-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .detail-card h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .detail-card p {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: var(--secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--accent);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .auth-container, .love-calculator {
+                padding: 20px;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .love-percentage {
+                font-size: 3rem;
+            }
+            
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .heart {
+            color: var(--primary);
+            font-size: 1.5rem;
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1 class="logo">💘 Love Meter</h1>
+            <p class="tagline">तपाईंले माया गरेको मान्छेले तपाईंलाई कति माया गर्छ, चेक गर्नुहोस्।❤️</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Authentication Section -->
+        <div id="authSection" class="auth-container">
+            <div id="loginForm">
+                <h2>Login to Your Love Account</h2>
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                </div>
+                <button id="loginBtn" class="btn">Login 💖</button>
+                <button id="showRegisterBtn" class="btn btn-secondary">New to Love Meter? Register Here</button>
+            </div>
+
+            <div id="registerForm" class="hidden">
+                <h2>Create Your Love Account</h2>
+                <div class="form-group">
+                    <label for="registerEmail">Email Address</label>
+                    <input type="email" id="registerEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" placeholder="Create a password (min 6 characters)" required>
+                </div>
+                <button id="registerBtn" class="btn">Register 💕</button>
+                <button id="showLoginBtn" class="btn btn-secondary">Already have an account? Login Here</button>
+            </div>
+        </div>
+
+        <!-- Love Calculator Section (Visible after login) -->
+        <div id="appSection" class="hidden">
+            <div class="user-info">
+                <span class="welcome">Welcome, <span id="userEmail"></span>!</span>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+
+            <div class="love-calculator">
+                <h2>Calculate Your Love Percentage💑</h2>
+                <div class="form-group">
+                    <label for="userAge">Your Age</label>
+                    <input type="number" id="userAge" min="16" max="100" placeholder="Enter your age" required>
+                </div>
+                <div class="form-group">
+                    <label for="pastPartner">Your Name</label>
+                    <input type="text" id="pastPartner" placeholder="Enter your name" required>
+                </div>
+                <div class="form-group">
+                    <label for="presentPartner">GF/BF Name</label>
+                    <input type="text" id="presentPartner" placeholder="Enter your gf/bg name" required>
+                </div>
+                <button id="calculateBtn" class="btn">Calculate Love Percentage 💞</button>
+                <button id="generateShayariBtn" class="btn btn-secondary" style="margin-top: 15px;">
+                    Generate Romantic Shayari 💌
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultSection" class="result-container hidden">
+                <h2>Your Love Results 💝</h2>
+                <div class="love-percentage">
+                    <span id="percentage">0</span>%
+                </div>
+                
+                <div class="result-details">
+                    <div class="detail-card">
+                        <h3>Your Age</h3>
+                        <p id="resultAge">-</p>
+                    </div>
+                    <div class="detail-card">
+                        <h3>Past Partner</h3>
+                        <p id="resultPast">-</p>
+                    </div>
+                    <div class="detail-card">
+                        <h3>Present Partner</h3>
+                        <p id="resultPresent">-</p>
+                    </div>
+                </div>
+
+                <div class="shayari-box">
+                    <p id="shayariText">Click "Generate Romantic Shayari" for a beautiful love quote!</p>
+                </div>
+
+                <div class="message" id="loveMessage"></div>
+            </div>
+        </div>
+
+        <!-- Message Display -->
+        <div id="messageBox" class="message hidden"></div>
+    </div>
+
+    
+
+    <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // ============================================
+        // Replace this configuration with your own Firebase project settings
+        // Get these from Firebase Console > Project Settings > General > Your Apps
+        const firebaseConfig = {
+            apiKey: "AIzaSyAuH0dUqyKG7f8-CsJAweQ8QN9Qa-_fLLI",
+  authDomain: "practicedemo-78f96.firebaseapp.com",
+  databaseURL: "https://practicedemo-78f96-default-rtdb.firebaseio.com",
+  projectId: "practicedemo-78f96",
+  storageBucket: "practicedemo-78f96.firebasestorage.app",
+  messagingSenderId: "80154089118",
+  appId: "1:80154089118:web:e6bf7f4e71b6e8626f8d8f",
+  measurementId: "G-GX9NQ4K17M"
+        };
+
+        // ============================================
+        // FIREBASE INITIALIZATION
+        // ============================================
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const authSection = document.getElementById('authSection');
+        const appSection = document.getElementById('appSection');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const resultSection = document.getElementById('resultSection');
+        const messageBox = document.getElementById('messageBox');
+
+        // Buttons
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const generateShayariBtn = document.getElementById('generateShayariBtn');
+        const showRegisterBtn = document.getElementById('showRegisterBtn');
+        const showLoginBtn = document.getElementById('showLoginBtn');
+
+        // Input Fields
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const registerEmail = document.getElementById('registerEmail');
+        const registerPassword = document.getElementById('registerPassword');
+        const userAge = document.getElementById('userAge');
+        const pastPartner = document.getElementById('pastPartner');
+        const presentPartner = document.getElementById('presentPartner');
+
+        // Result Display Elements
+        const userEmail = document.getElementById('userEmail');
+        const percentage = document.getElementById('percentage');
+        const resultAge = document.getElementById('resultAge');
+        const resultPast = document.getElementById('resultPast');
+        const resultPresent = document.getElementById('resultPresent');
+        const shayariText = document.getElementById('shayariText');
+        const loveMessage = document.getElementById('loveMessage');
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        showRegisterBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+        });
+
+        showLoginBtn.addEventListener('click', () => {
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        });
+
+        loginBtn.addEventListener('click', handleLogin);
+        registerBtn.addEventListener('click', handleRegister);
+        logoutBtn.addEventListener('click', handleLogout);
+        calculateBtn.addEventListener('click', calculateLove);
+        generateShayariBtn.addEventListener('click', generateShayari);
+
+        // ============================================
+        // AUTHENTICATION FUNCTIONS
+        // ============================================
+        function handleLogin() {
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+
+            if (!email || !password) {
+                showMessage('Please enter both email and password', 'error');
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showMessage('Login successful! Welcome back!', 'success');
+                    loadUserData(userCredential.user.uid);
+                })
+                .catch((error) => {
+                    showMessage(error.message, 'error');
+                });
+        }
+
+        function handleRegister() {
+            const email = registerEmail.value;
+            const password = registerPassword.value;
+
+            if (!email || !password) {
+                showMessage('Please enter both email and password', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showMessage('Registration successful! Welcome to Love Meter!', 'success');
+                    saveUserData(userCredential.user.uid, {
+                        email: email,
+                        createdAt: new Date().toISOString()
+                    });
+                })
+                .catch((error) => {
+                    showMessage(error.message, 'error');
+                });
+        }
+
+        function handleLogout() {
+            auth.signOut()
+                .then(() => {
+                    showMessage('Logged out successfully', 'success');
+                    clearForms();
+                })
+                .catch((error) => {
+                    showMessage(error.message, 'error');
+                });
+        }
+
+        // ============================================
+        // AUTH STATE OBSERVER
+        // ============================================
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in
+                userEmail.textContent = user.email;
+                authSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                loadUserData(user.uid);
+            } else {
+                // User is signed out
+                authSection.classList.remove('hidden');
+                appSection.classList.add('hidden');
+                resultSection.classList.add('hidden');
+            }
+        });
+
+        // ============================================
+        // DATABASE FUNCTIONS
+        // ============================================
+        function saveUserData(userId, data) {
+            database.ref('users/' + userId).set(data)
+                .catch((error) => {
+                    console.error('Error saving user data:', error);
+                });
+        }
+
+        function saveLoveData(userId, loveData) {
+            const userRef = database.ref('users/' + userId + '/loveCalculations');
+            const newCalculationRef = userRef.push();
+            newCalculationRef.set({
+                ...loveData,
+                timestamp: new Date().toISOString()
+            })
+            .then(() => {
+                showMessage('Love calculation saved to your history!', 'success');
+            })
+            .catch((error) => {
+                console.error('Error saving love data:', error);
+            });
+        }
+
+        function loadUserData(userId) {
+            database.ref('users/' + userId).once('value')
+                .then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.latestCalculation) {
+                        // Pre-fill form with latest calculation
+                        userAge.value = data.latestCalculation.age || '';
+                        pastPartner.value = data.latestCalculation.pastPartner || '';
+                        presentPartner.value = data.latestCalculation.presentPartner || '';
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error loading user data:', error);
+                });
+        }
+
+        // ============================================
+        // LOVE CALCULATOR FUNCTIONS
+        // ============================================
+        function calculateLove() {
+            const age = userAge.value;
+            const past = pastPartner.value.trim();
+            const present = presentPartner.value.trim();
+
+            if (!age || !past || !present) {
+                showMessage('Please fill in all fields', 'error');
+                return;
+            }
+
+            if (age < 16 || age > 100) {
+                showMessage('Please enter a valid age (16-100)', 'error');
+                return;
+            }
+
+            // Generate love percentage based on inputs (fun algorithm)
+            const lovePercentage = generateLovePercentage(past, present, age);
+            
+            // Update UI
+            percentage.textContent = lovePercentage;
+            resultAge.textContent = age;
+            resultPast.textContent = past;
+            resultPresent.textContent = present;
+            
+            // Generate love message based on percentage
+            const message = getLoveMessage(lovePercentage);
+            loveMessage.textContent = message;
+            loveMessage.className = 'message success';
+            
+            // Show result section
+            resultSection.classList.remove('hidden');
+            
+            // Generate a shayari automatically
+            generateShayari();
+            
+            // Save to database
+            const user = auth.currentUser;
+            if (user) {
+                const loveData = {
+                    age: age,
+                    pastPartner: past,
+                    presentPartner: present,
+                    percentage: lovePercentage,
+                    message: message
+                };
+                
+                // Save latest calculation
+                database.ref('users/' + user.uid + '/latestCalculation').set(loveData);
+                
+                // Save to history
+                saveLoveData(user.uid, loveData);
+            }
+            
+            // Scroll to results
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateLovePercentage(past, present, age) {
+            // Fun algorithm to generate "random" but consistent percentage
+            let seed = 0;
+            
+            // Add up character codes
+            for (let i = 0; i < present.length; i++) {
+                seed += present.charCodeAt(i);
+            }
+            
+            // Factor in age
+            seed += parseInt(age) * 7;
+            
+            // Factor in past partner name length
+            seed -= past.length * 3;
+            
+            // Generate percentage between 50-100 (always optimistic!)
+            let percentage = 50 + (seed % 50);
+            
+            // Round to nearest whole number
+            return Math.round(percentage);
+        }
+
+        function getLoveMessage(percentage) {
+            if (percentage >= 90) {
+                return "💖 Perfect Match! You two are meant to be together forever! 💖";
+            } else if (percentage >= 75) {
+                return "💕 Amazing Connection! This is true love, cherish it always!";
+            } else if (percentage >= 60) {
+                return "❤️ Strong Bond! With some effort, this can become perfect!";
+            } else if (percentage >= 50) {
+                return "💝 Good Potential! There's something special here, nurture it!";
+            } else {
+                return "💗 Keep Trying! Every love story has its own beautiful journey!";
+            }
+        }
+
+        // ============================================
+        // SHAYARI / QUOTE GENERATOR
+        // ============================================
+        const shayaris = [
+            "Pyaar ek aisi neend hai, jisse aankh khulne par bhi sacchai nazar aati hai.",
+            "Dil ki dhadkan se lekar saanson tak, har lamha tumhare saath guzarna chahta hun.",
+            "Tere bina zindagi adhoori hai, tere saath har pal ek kahani hai.",
+            "Mohabbat ki raahon mein mili tum, toh samjho zindagi safal ho gayi.",
+            "Tumhara har ada pe marta hun, tumhare bina zindagi hai suni-saani.",
+            "Dil ki gehraiyon se nikalta hai ek armaan, tumhare saath bitaye har pal ho jaye anmol.",
+            "Pyaar vo baat hai jo zabaan nahi bolti, aankhein bolti hain.",
+            "Tum ho toh har mushkil aasaan lagti hai, tum ho toh har raat suhaani lagti hai.",
+            "Ishq ne badal di meri duniya, tum mile toh sab kuch hua haseen.",
+            "Tere ishq mein kho gaya hun main, ab na mujhe duniya ki khabar, na apne aap ki.",
+            "Dil ki dhadkan tumse kehti hai, tum hi ho meri manzil, tum hi ho meri raah.",
+            "Har saans mein tum, har khwaish mein tum, tum hi ho meri duniya ka aasool.",
+            "Tumhare bina adhoora sa lagta hai har sapna, tum ho toh puri hoti hai har kahani.",
+            "Ishq ek aag hai jo dil ko jalati hai, par tumhara pyaar ek dawa hai jo har zakham bhar deta hai."
+        ];
+
+        function generateShayari() {
+            const randomIndex = Math.floor(Math.random() * shayaris.length);
+            shayariText.textContent = shayaris[randomIndex];
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = `message ${type}`;
+            messageBox.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        function clearForms() {
+            loginEmail.value = '';
+            loginPassword.value = '';
+            registerEmail.value = '';
+            registerPassword.value = '';
+            userAge.value = '';
+            pastPartner.value = '';
+            presentPartner.value = '';
+            resultSection.classList.add('hidden');
+        }
+
+        // ============================================
+        // INITIAL SETUP
+        // ============================================
+        // Initialize with a random shayari
+        generateShayari();
+        
+        // Auto-focus on login email field
+        loginEmail.focus();
+    </script>
+</body>
+</html>
